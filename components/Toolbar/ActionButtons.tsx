@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
 import { useHistory } from "@/hooks/useHistory";
-import { useDrawingStore } from "@/hooks/useDrawing";
+import { useDrawing } from "@/hooks/useDrawing";
 
 export const ActionButtons = memo(function ActionButtons() {
   const {
@@ -22,7 +22,7 @@ export const ActionButtons = memo(function ActionButtons() {
     skipToLatest,
   } = useHistory();
 
-  const { isDrawing: disabled } = useDrawingStore();
+  const { isDrawing: disabled } = useDrawing();
 
   const progress =
     history.length === 0 ? 0 : (currentStep / (history.length - 1)) * 100;

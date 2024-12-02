@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
 import { useToolbar } from "@/hooks/useToolbar";
-import { useDrawingStore } from "@/hooks/useDrawing";
+import { useDrawing } from "@/hooks/useDrawing";
 
 export const ColorPicker = memo(function ColorPicker() {
   const predefinedColors = [
@@ -26,7 +26,7 @@ export const ColorPicker = memo(function ColorPicker() {
   ];
 
   const { color, setColor } = useToolbar();
-  const { isDrawing: disabled } = useDrawingStore();
+  const { isDrawing: disabled } = useDrawing();
 
   return (
     <div className="flex items-center gap-2">

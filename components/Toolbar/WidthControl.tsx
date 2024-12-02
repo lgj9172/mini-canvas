@@ -1,11 +1,11 @@
 import { memo } from "react";
 import { Slider } from "@/components/ui/slider";
-import { useDrawingStore } from "@/hooks/useDrawing";
+import { useDrawing } from "@/hooks/useDrawing";
 import { useToolbar } from "@/hooks/useToolbar";
 
 export const WidthControl = memo(function WidthControl() {
   const { width, minWidth, maxWidth, setWidth } = useToolbar();
-  const { isDrawing: disabled } = useDrawingStore();
+  const { isDrawing: disabled } = useDrawing();
 
   return (
     <div className="flex flex-col gap-1">

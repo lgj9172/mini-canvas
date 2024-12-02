@@ -6,7 +6,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useDrawingStore } from "@/hooks/useDrawing";
+import { useDrawing } from "@/hooks/useDrawing";
 import { useToolbar } from "@/hooks/useToolbar";
 import { Circle, Hexagon, Minus, Spline, Square } from "lucide-react";
 
@@ -20,7 +20,7 @@ export const ToolSelector = memo(function ToolSelector() {
   ];
 
   const { tool, setTool } = useToolbar();
-  const { isDrawing: disabled } = useDrawingStore();
+  const { isDrawing: disabled } = useDrawing();
 
   return (
     <Select value={tool} onValueChange={setTool} disabled={disabled}>
