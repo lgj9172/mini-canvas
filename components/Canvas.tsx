@@ -10,7 +10,7 @@ import { Toolbar } from "./Toolbar";
 export default function Canvas() {
   const windowSize = useWindowSize();
   const { tool, color, width } = useToolbar();
-  const { history, currentStep, appendHistory } = useHistory();
+  const { history, currentStep } = useHistory();
   const {
     drawing,
     handleLineDrawing,
