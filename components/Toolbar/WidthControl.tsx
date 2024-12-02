@@ -1,16 +1,13 @@
 import { Slider } from "@/components/ui/slider";
+import { useToolbar } from "@/hooks/useToolbar";
 
-interface StrokeWidthControlProps {
-  strokeWidth: number;
-  onStrokeWidthChange: (width: number) => void;
+interface WidthControlProps {
   disabled?: boolean;
 }
 
-export function StrokeWidthControl({
-  strokeWidth,
-  onStrokeWidthChange,
-  disabled,
-}: StrokeWidthControlProps) {
+export function WidthControl({ disabled }: WidthControlProps) {
+  const { width, minWidth, maxWidth, setWidth } = useToolbar();
+
   return (
     <div className="flex flex-col gap-1">
       <div className="flex justify-between items-center">
@@ -22,14 +19,14 @@ export function StrokeWidthControl({
           선 굵기
         </span>
         <span className={`text-xs font-medium ${disabled ? "opacity-50" : ""}`}>
-          {strokeWidth}px
+          {width}px
         </span>
       </div>
       <Slider
-        value={[strokeWidth]}
-        onValueChange={([value]) => onStrokeWidthChange(value)}
-        min={5}
-        max={50}
+        value={[width]}
+        onValueChange={([value]) => setWidth(value)}
+        min={minWidth}
+        max={maxWidth}
         step={1}
         disabled={disabled}
         className="w-[140px]"

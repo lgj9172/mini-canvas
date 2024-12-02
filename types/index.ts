@@ -43,18 +43,5 @@ export interface Drawing {
 }
 
 export interface ToolbarProps {
-  selectedTool: Tool;
-  color: string;
-  strokeWidth: number;
-  onToolChange: (tool: Tool) => void;
-  onColorChange: (color: string) => void;
-  onStrokeWidthChange: (width: number) => void;
-  onUndoClick: () => void;
-  onRedoClick: () => void;
-  onResetClick: () => void;
-  canUndo: boolean;
-  canRedo: boolean;
-  currentStep: number;
-  totalSteps: number;
   disabled?: boolean;
 }

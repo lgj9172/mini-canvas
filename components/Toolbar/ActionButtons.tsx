@@ -8,29 +8,20 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
+import { useHistory } from "@/hooks/useHistory";
 
 interface ActionButtonsProps {
-  onUndo: () => void;
-  onRedo: () => void;
-  onReset: () => void;
-  canUndo: boolean;
-  canRedo: boolean;
-  currentStep: number;
-  totalSteps: number;
   disabled?: boolean;
 }
 
-export function ActionButtons({
-  onUndo,
-  onRedo,
-  onReset,
-  canUndo,
-  canRedo,
-  currentStep,
-  totalSteps,
-  disabled,
-}: ActionButtonsProps) {
-  const progress = totalSteps === 0 ? 0 : (currentStep / totalSteps) * 100;
+export function ActionButtons({ disabled }: ActionButtonsProps) {
+  const { history, undoHistory, redoHistory, resetHistory, currentStep } =
+    useHistory();
+
+  const progress =
+    history.length === 0 ? 0 : (currentStep / (history.length - 1)) * 100;
+  const canUndo = currentStep > 0;
+  const canRedo = currentStep < history.length - 1;
 
   return (
     <TooltipProvider>
@@ -45,7 +36,7 @@ export function ActionButtons({
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={onUndo}
+                onClick={undoHistory}
                 disabled={!canUndo || disabled}
                 className="h-6 w-6"
               >
@@ -62,7 +53,7 @@ export function ActionButtons({
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={onRedo}
+                onClick={redoHistory}
                 disabled={!canRedo || disabled}
                 className="h-6 w-6"
               >
@@ -81,7 +72,7 @@ export function ActionButtons({
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={onReset}
+                onClick={resetHistory}
                 disabled={disabled}
                 className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
               >
@@ -98,7 +89,7 @@ export function ActionButtons({
           <div className="flex justify-between items-center">
             <span className="text-xs text-muted-foreground">작업</span>
             <span className="text-xs font-medium">
-              {currentStep} / {totalSteps}
+              {currentStep} / {history.length - 1}
             </span>
           </div>
           <Progress value={progress} className="h-[6px] w-[140px]" />

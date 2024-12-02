@@ -5,20 +5,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useToolbar } from "@/hooks/useToolbar";
 import { Tool } from "@/types";
 import { Minus, Spline, Circle, Square, Hexagon } from "lucide-react";
 
 interface ToolSelectorProps {
-  selectedTool: Tool;
-  onToolChange: (tool: Tool) => void;
   disabled?: boolean;
 }
 
-export function ToolSelector({
-  selectedTool,
-  onToolChange,
-  disabled,
-}: ToolSelectorProps) {
+export function ToolSelector({ disabled }: ToolSelectorProps) {
   const tools = [
     { value: "line", label: "직선", icon: Minus },
     { value: "curve", label: "곡선", icon: Spline },
@@ -27,12 +22,10 @@ export function ToolSelector({
     { value: "polygon", label: "다각형", icon: Hexagon },
   ];
 
+  const { tool, setTool } = useToolbar();
+
   return (
-    <Select
-      value={selectedTool}
-      onValueChange={onToolChange}
-      disabled={disabled}
-    >
+    <Select value={tool} onValueChange={setTool} disabled={disabled}>
       <SelectTrigger className="w-[140px]" disabled={disabled}>
         <SelectValue />
       </SelectTrigger>

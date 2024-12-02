@@ -5,14 +5,13 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
+import { useToolbar } from "@/hooks/useToolbar";
 
 interface ColorPickerProps {
-  color: string;
-  setColor: (color: string) => void;
   disabled?: boolean;
 }
 
-export function ColorPicker({ color, setColor, disabled }: ColorPickerProps) {
+export function ColorPicker({ disabled }: ColorPickerProps) {
   const predefinedColors = [
     "#000000", // 검정
     "#6B7280", // gray-500
@@ -27,6 +26,8 @@ export function ColorPicker({ color, setColor, disabled }: ColorPickerProps) {
     "#8B5CF6", // violet-500
     "#EC4899", // pink-500
   ];
+
+  const { color, setColor } = useToolbar();
 
   return (
     <div className="flex items-center gap-2">
