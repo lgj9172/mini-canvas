@@ -13,6 +13,7 @@ interface HistoryState {
   undoHistory: () => void;
   redoHistory: () => void;
   resetHistory: () => void;
+  skipToLatest: () => void;
 }
 
 export const useHistory = create<HistoryState>()(
@@ -69,6 +70,13 @@ export const useHistory = create<HistoryState>()(
           history: [[]],
           currentStep: 0,
         });
+      },
+
+      skipToLatest: () => {
+        set((state) => ({
+          currentStep: state.history.length - 1,
+          history: state.history,
+        }));
       },
     }),
     {

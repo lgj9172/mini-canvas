@@ -1,7 +1,7 @@
 import { memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Undo2, Redo2, RotateCcw } from "lucide-react";
+import { Undo2, Redo2, RotateCcw, SkipForward } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -13,8 +13,14 @@ import { useHistory } from "@/hooks/useHistory";
 import { useDrawingStore } from "@/hooks/useDrawing";
 
 export const ActionButtons = memo(function ActionButtons() {
-  const { history, undoHistory, redoHistory, resetHistory, currentStep } =
-    useHistory();
+  const {
+    history,
+    undoHistory,
+    redoHistory,
+    resetHistory,
+    currentStep,
+    skipToLatest,
+  } = useHistory();
 
   const { isDrawing: disabled } = useDrawingStore();
 
@@ -22,6 +28,7 @@ export const ActionButtons = memo(function ActionButtons() {
     history.length === 0 ? 0 : (currentStep / (history.length - 1)) * 100;
   const canUndo = currentStep > 0;
   const canRedo = currentStep < history.length - 1;
+  const canSkipToLatest = currentStep < history.length - 1;
 
   return (
     <TooltipProvider>
@@ -62,6 +69,23 @@ export const ActionButtons = memo(function ActionButtons() {
             </TooltipTrigger>
             <TooltipContent side="bottom" className="text-xs">
               <p>다시 실행 (Ctrl+Y)</p>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={skipToLatest}
+                disabled={!canSkipToLatest || disabled}
+                className="h-6 w-6"
+              >
+                <SkipForward className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">
+              <p>최근 작업으로 이동</p>
             </TooltipContent>
           </Tooltip>
 
