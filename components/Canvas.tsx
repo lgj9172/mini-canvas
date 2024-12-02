@@ -10,11 +10,13 @@ import { Circle, Layer, Line, Rect, Stage } from "react-konva";
 import { Toolbar } from "./Toolbar";
 import { Vector2d } from "konva/lib/types";
 import { useDrawingStore } from "@/hooks/useDrawing";
+import { useEffect } from "react";
 
 export default function Canvas() {
   const windowSize = useWindowSize();
   const { tool, color, width } = useToolbar();
-  const { history, currentStep, appendHistory } = useHistory();
+  const { history, currentStep, appendHistory, undoHistory, redoHistory } =
+    useHistory();
   const {
     isDrawing,
     currentLine,
@@ -240,6 +242,33 @@ export default function Canvas() {
 
     return null;
   };
+
+  // 키보드 단축키 이벤트 핸들러 추가
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        // Windows의 Ctrl 키와 Mac의 Command 키 모두 지원
+        switch (e.key.toLowerCase()) {
+          case "z":
+            e.preventDefault(); // 브라우저 기본 동작 방지
+            undoHistory();
+            break;
+          case "y":
+            e.preventDefault();
+            redoHistory();
+            break;
+        }
+      }
+    };
+
+    // 이벤트 리스너 등록
+    window.addEventListener("keydown", handleKeyDown);
+
+    // 컴포넌트 언마운트 시 이벤트 리스너 제거
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [undoHistory, redoHistory]);
 
   return (
     <div className="h-screen flex flex-col">
