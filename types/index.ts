@@ -11,7 +11,3 @@ export interface Drawing {
   startPoint: Vector2d | null;
   polygonPoints: Vector2d[];
 }
-
-export interface ToolbarProps {
-  disabled?: boolean;
-}
