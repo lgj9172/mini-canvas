@@ -1,14 +1,15 @@
 import { create } from "zustand";
-import { LineType, ShapeType, Snapshot } from "@/types";
+import { LineConfig } from "konva/lib/shapes/Line";
+import { ShapeConfig } from "konva/lib/Shape";
 import { persist } from "zustand/middleware";
 
 const MAX_HISTORY = 41;
 const STORAGE_KEY = "drawing-history";
 
 interface HistoryState {
-  history: Snapshot[];
+  history: (LineConfig | ShapeConfig)[][];
   currentStep: number;
-  appendHistory: (newLines: LineType[], newShapes: ShapeType[]) => void;
+  appendHistory: (newElements: (LineConfig | ShapeConfig)[]) => void;
   undoHistory: () => void;
   redoHistory: () => void;
   resetHistory: () => void;
@@ -17,13 +18,13 @@ interface HistoryState {
 export const useHistory = create<HistoryState>()(
   persist(
     (set, get) => ({
-      history: [{ lines: [], shapes: [] }],
+      history: [[]],
       currentStep: 0,
 
-      appendHistory: (newLines, newShapes) => {
+      appendHistory: (newElements) => {
         set((state) => {
           const newHistory = state.history.slice(0, state.currentStep + 1);
-          newHistory.push({ lines: newLines, shapes: newShapes });
+          newHistory.push(newElements);
 
           if (newHistory.length > MAX_HISTORY) {
             return {
@@ -42,19 +43,9 @@ export const useHistory = create<HistoryState>()(
       undoHistory: () => {
         set((state) => {
           if (state.currentStep > 0) {
-            const newStep = state.currentStep - 1;
-            const currentSnapshot = state.history[newStep];
-
             return {
-              currentStep: newStep,
-              history: state.history.map((snapshot, index) =>
-                index === newStep
-                  ? {
-                      lines: currentSnapshot.lines,
-                      shapes: currentSnapshot.shapes,
-                    }
-                  : snapshot
-              ),
+              currentStep: state.currentStep - 1,
+              history: state.history,
             };
           }
           return state;
@@ -64,19 +55,9 @@ export const useHistory = create<HistoryState>()(
       redoHistory: () => {
         set((state) => {
           if (state.currentStep < state.history.length - 1) {
-            const newStep = state.currentStep + 1;
-            const currentSnapshot = state.history[newStep];
-
             return {
-              currentStep: newStep,
-              history: state.history.map((snapshot, index) =>
-                index === newStep
-                  ? {
-                      lines: currentSnapshot.lines,
-                      shapes: currentSnapshot.shapes,
-                    }
-                  : snapshot
-              ),
+              currentStep: state.currentStep + 1,
+              history: state.history,
             };
           }
           return state;
@@ -85,7 +66,7 @@ export const useHistory = create<HistoryState>()(
 
       resetHistory: () => {
         set({
-          history: [{ lines: [], shapes: [] }],
+          history: [[]],
           currentStep: 0,
         });
       },

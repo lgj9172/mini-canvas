@@ -1,3 +1,4 @@
+import { memo } from "react";
 import {
   Select,
   SelectContent,
@@ -5,15 +6,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useDrawingStore } from "@/hooks/useDrawing";
 import { useToolbar } from "@/hooks/useToolbar";
-import { Tool } from "@/types";
-import { Minus, Spline, Circle, Square, Hexagon } from "lucide-react";
+import { Circle, Hexagon, Minus, Spline, Square } from "lucide-react";
 
-interface ToolSelectorProps {
-  disabled?: boolean;
-}
-
-export function ToolSelector({ disabled }: ToolSelectorProps) {
+export const ToolSelector = memo(function ToolSelector() {
   const tools = [
     { value: "line", label: "직선", icon: Minus },
     { value: "curve", label: "곡선", icon: Spline },
@@ -23,6 +20,7 @@ export function ToolSelector({ disabled }: ToolSelectorProps) {
   ];
 
   const { tool, setTool } = useToolbar();
+  const { isDrawing: disabled } = useDrawingStore();
 
   return (
     <Select value={tool} onValueChange={setTool} disabled={disabled}>
@@ -41,4 +39,4 @@ export function ToolSelector({ disabled }: ToolSelectorProps) {
       </SelectContent>
     </Select>
   );
-}
+});

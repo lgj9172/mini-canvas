@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { Drawing, LineType, Point, ShapeType, Snapshot, Tool } from "@/types";
-import { useToolbar } from "./useToolbar";
-import { useHistory } from "./useHistory";
+import { create } from "zustand";
+import { LineConfig } from "konva/lib/shapes/Line";
+import { CircleConfig } from "konva/lib/shapes/Circle";
+import { RectConfig } from "konva/lib/shapes/Rect";
+import { Vector2d } from "konva/lib/types";
 
 const CONSTANTS = {
   SEGMENTS: 50,
@@ -9,267 +10,355 @@ const CONSTANTS = {
   CONTROL_POINT_RADIUS: 6,
 } as const;
 
-export const useDrawing = () => {
-  const { color, width, tool } = useToolbar();
+interface DrawingState {
+  isDrawing: boolean;
+  currentLine: number[] | null;
+  currentShape: (LineConfig | CircleConfig | RectConfig) | null;
+  controlPoint: Vector2d | null;
+  startPoint: Vector2d | null;
+  polygonPoints: Vector2d[];
 
-  const { history, currentStep, appendHistory } = useHistory();
+  resetDrawing: () => void;
+  handleLineDrawing: (
+    pos: Vector2d,
+    isFirstClick: boolean,
+    color: string,
+    width: number,
+    history: any[],
+    currentStep: number,
+    appendHistory: (elements: any[]) => void
+  ) => void;
+  handleCurveDrawing: (
+    pos: Vector2d,
+    color: string,
+    width: number,
+    history: any[],
+    currentStep: number,
+    appendHistory: (elements: any[]) => void
+  ) => void;
+  handleShapeDrawing: (
+    pos: Vector2d,
+    isFirstClick: boolean,
+    color: string,
+    width: number,
+    history: any[],
+    currentStep: number,
+    appendHistory: (elements: any[]) => void
+  ) => void;
+  handlePolygonDrawing: (
+    pos: Vector2d,
+    color: string,
+    width: number,
+    history: any[],
+    currentStep: number,
+    appendHistory: (elements: any[]) => void
+  ) => void;
+  handleLineMove: (pos: Vector2d) => void;
+  handleCurveMove: (pos: Vector2d) => void;
+  handleCircleMove: (pos: Vector2d) => void;
+  handleRectangleMove: (pos: Vector2d) => void;
+  handlePolygonMove: (pos: Vector2d) => void;
+  calculateBezierPoints: (
+    start: Vector2d,
+    control: Vector2d,
+    end: Vector2d
+  ) => number[];
+}
 
-  const [drawing, setDrawing] = useState<Drawing>({
-    isDrawing: false,
-    currentLine: null,
-    currentShape: null,
-    controlPoint: null,
-    startPoint: null,
-    polygonPoints: [],
-  });
+export const useDrawingStore = create<DrawingState>((set, get) => ({
+  // 초기 상태
+  isDrawing: false,
+  currentLine: null,
+  currentShape: null,
+  controlPoint: null,
+  startPoint: null,
+  polygonPoints: [],
 
-  const resetDrawing = () => {
-    setDrawing({
+  // 그리기 상태 초기화
+  resetDrawing: () =>
+    set({
       isDrawing: false,
       currentLine: null,
       currentShape: null,
       controlPoint: null,
       startPoint: null,
       polygonPoints: [],
-    });
-  };
+    }),
 
-  const handleLineDrawing = (pos: Point, isFirstClick: boolean) => {
+  // 선 그리기 처리
+  handleLineDrawing: (
+    pos: Vector2d,
+    isFirstClick: boolean,
+    color: string,
+    width: number,
+    history: any[],
+    currentStep: number,
+    appendHistory: (elements: any[]) => void
+  ) => {
     // 첫 번째 클릭: 선 그리기 시작
     if (isFirstClick) {
-      const initialLine = {
+      set({
         isDrawing: true,
         currentLine: [pos.x, pos.y, pos.x, pos.y],
-      };
-
-      setDrawing((prev) => ({ ...prev, ...initialLine }));
+      });
       return;
     }
 
     // 두 번째 클릭: 선 그리기 완료
-    const newLine: LineType = {
-      points: drawing.currentLine!,
-      color: color,
+    const state = get();
+    const newLine = {
+      points: state.currentLine!,
+      stroke: color,
       strokeWidth: width,
-      tool: tool,
     };
 
-    const updatedLines = [...history[currentStep].lines, newLine];
-    appendHistory(updatedLines, history[currentStep].shapes);
-    resetDrawing();
-  };
+    const updatedElements = [...history[currentStep], newLine];
+    appendHistory(updatedElements);
+    get().resetDrawing();
+  },
 
-  const handleCurveDrawing = (pos: Point) => {
+  // 곡선 그리기 처리
+  handleCurveDrawing: (
+    pos: Vector2d,
+    color: string,
+    width: number,
+    history: any[],
+    currentStep: number,
+    appendHistory: (elements: any[]) => void
+  ) => {
+    const state = get();
     // 시작점 설정
-    if (!drawing.isDrawing) {
-      const initialCurve = {
+    if (!state.isDrawing) {
+      set({
         isDrawing: true,
         currentLine: [pos.x, pos.y],
-      };
-
-      setDrawing((prev) => ({ ...prev, ...initialCurve }));
+      });
       return;
     }
 
     // 제어점 설정
-    if (!drawing.controlPoint) {
-      const controlPoint = { x: pos.x, y: pos.y };
-      setDrawing((prev) => ({ ...prev, controlPoint }));
+    if (!state.controlPoint) {
+      set({ controlPoint: pos });
       return;
     }
 
     // 곡선 완성
     const startPoint = {
-      x: drawing.currentLine![0],
-      y: drawing.currentLine![1],
+      x: state.currentLine![0],
+      y: state.currentLine![1],
     };
 
-    const newLine: LineType = {
-      points: calculateBezierPoints(startPoint, drawing.controlPoint, pos),
-      color: color,
+    const newLine = {
+      points: get().calculateBezierPoints(startPoint, state.controlPoint, pos),
+      stroke: color,
       strokeWidth: width,
-      tool: tool,
     };
 
-    const updatedLines = [...history[currentStep].lines, newLine];
-    appendHistory(updatedLines, history[currentStep].shapes);
-    resetDrawing();
-  };
+    const updatedElements = [...history[currentStep], newLine];
+    appendHistory(updatedElements);
+    get().resetDrawing();
+  },
 
-  const handleShapeDrawing = (pos: Point, isFirstClick: boolean) => {
-    // 첫 번째 클릭: 도형 그리기 시작
+  // 도형 그리기 처리
+  handleShapeDrawing: (
+    pos: Vector2d,
+    isFirstClick: boolean,
+    color: string,
+    width: number,
+    history: any[],
+    currentStep: number,
+    appendHistory: (elements: any[]) => void
+  ) => {
     if (isFirstClick) {
-      const initialShape = {
+      // 명시적으로 RectConfig 타입의 초기 도형만 생성
+      const initialShape: RectConfig = {
         id: crypto.randomUUID(),
-        tool: tool,
         x: pos.x,
         y: pos.y,
         width: 0,
         height: 0,
-        radius: 0,
         stroke: color,
         strokeWidth: width,
         isComplete: false,
       };
 
-      setDrawing((prev) => ({
-        ...prev,
+      set({
         isDrawing: true,
         startPoint: pos,
         currentShape: initialShape,
-      }));
+      });
       return;
     }
 
     // 두 번째 클릭: 도형 그리기 완료
+    const state = get();
     const completedShape = {
-      ...drawing.currentShape!,
+      ...state.currentShape!,
       isComplete: true,
     };
 
-    const updatedShapes = [...history[currentStep].shapes, completedShape];
-    appendHistory(history[currentStep].lines, updatedShapes);
-    resetDrawing();
-  };
+    const updatedElements = [...history[currentStep], completedShape];
+    appendHistory(updatedElements);
+    get().resetDrawing();
+  },
 
-  const handlePolygonDrawing = (pos: Point) => {
+  // 다각형 그리기 처리
+  handlePolygonDrawing: (
+    pos: Vector2d,
+    color: string,
+    width: number,
+    history: any[],
+    currentStep: number,
+    appendHistory: (elements: any[]) => void
+  ) => {
+    const state = get();
     // 시작점 근처인지 확인 (다각형 완성 조건)
     const isNearStartPoint = () => {
-      const hasMinPoints = drawing.polygonPoints.length > 2;
+      const hasMinPoints = state.polygonPoints.length > 2;
       const distanceToStart = Math.hypot(
-        pos.x - drawing.polygonPoints[0].x,
-        pos.y - drawing.polygonPoints[0].y
+        pos.x - state.polygonPoints[0].x,
+        pos.y - state.polygonPoints[0].y
       );
-
       return hasMinPoints && distanceToStart < 10;
     };
 
     // 다각형 그리기 시작
-    if (!drawing.isDrawing) {
+    if (!state.isDrawing) {
       const initialShape = {
         id: crypto.randomUUID(),
-        tool: "polygon",
         points: [pos.x, pos.y],
         stroke: color,
         strokeWidth: width,
         isComplete: false,
       };
 
-      setDrawing((prev) => ({
-        ...prev,
+      set({
         isDrawing: true,
         startPoint: pos,
         polygonPoints: [pos],
         currentShape: initialShape,
-      }));
+      });
       return;
     }
 
     // 다각형 완성 (시작점과 연결)
-    if (isNearStartPoint() && drawing.polygonPoints.length > 2) {
-      const points = drawing.polygonPoints.flatMap((p) => [p.x, p.y]);
-      const completedShape: ShapeType = {
-        ...drawing.currentShape!,
+    if (isNearStartPoint() && state.polygonPoints.length > 2) {
+      const points = state.polygonPoints.flatMap((p) => [p.x, p.y]);
+      const completedShape = {
+        ...state.currentShape!,
         points: [...points, points[0], points[1]], // 시작점으로 닫기
         isComplete: true,
       };
 
-      const updatedShapes = [...history[currentStep].shapes, completedShape];
-      appendHistory(history[currentStep].lines, updatedShapes);
-      resetDrawing();
+      const updatedElements = [...history[currentStep], completedShape];
+      appendHistory(updatedElements);
+      get().resetDrawing();
       return;
     }
 
     // 다각형 점 추가
-    const updatedPoints = [...drawing.polygonPoints, pos];
+    const updatedPoints = [...state.polygonPoints, pos];
     const flattenedPoints = updatedPoints.flatMap((p) => [p.x, p.y]);
 
-    setDrawing((prev) => ({
-      ...prev,
+    set({
       polygonPoints: updatedPoints,
       currentShape: {
-        ...prev.currentShape!,
+        ...state.currentShape!,
         points: flattenedPoints,
       },
-    }));
-  };
+    });
+  },
 
-  const handleLineMove = (pos: Point) => {
-    if (!drawing.currentLine) return;
+  // 선 이동 처리
+  handleLineMove: (pos: Vector2d) => {
+    const state = get();
+    if (!state.currentLine) return;
 
     const updatedLine = [
-      drawing.currentLine[0], // 시작점
-      drawing.currentLine[1],
+      state.currentLine[0], // 시작점
+      state.currentLine[1],
       pos.x, // 끝점
       pos.y,
     ];
 
-    setDrawing((prev) => ({
-      ...prev,
-      currentLine: updatedLine,
-    }));
-  };
+    set({ currentLine: updatedLine });
+  },
 
-  const handleCurveMove = (pos: Point) => {
+  // 곡선 이동 처리
+  handleCurveMove: (pos: Vector2d) => {
+    const state = get();
     const startPoint = {
-      x: drawing.currentLine![0], // 시작점
-      y: drawing.currentLine![1],
+      x: state.currentLine![0], // 시작점
+      y: state.currentLine![1],
     };
 
-    const endPoint = { x: pos.x, y: pos.y }; // 끝점
-    const controlPoint = drawing.controlPoint || endPoint; // 제어점
+    const endPoint = pos; // 끝점
+    const controlPoint = state.controlPoint || endPoint; // 제어점
 
-    const points = calculateBezierPoints(startPoint, controlPoint, endPoint);
-    setDrawing((prev) => ({ ...prev, currentLine: points }));
-  };
+    const points = get().calculateBezierPoints(
+      startPoint,
+      controlPoint,
+      endPoint
+    );
+    set({ currentLine: points });
+  },
 
-  const handleCircleMove = (pos: Point) => {
-    if (!drawing.startPoint) return;
+  // 원 이동 처리
+  handleCircleMove: (pos: Vector2d) => {
+    const state = get();
+    if (!state.startPoint) return;
 
     const radius = Math.hypot(
-      pos.x - drawing.startPoint.x,
-      pos.y - drawing.startPoint.y
+      pos.x - state.startPoint.x,
+      pos.y - state.startPoint.y
     ); // 반지름
 
-    updateCurrentShape({ radius });
-  };
-
-  const handleRectangleMove = (pos: Point) => {
-    if (!drawing.startPoint) return;
-
-    updateCurrentShape({
-      width: pos.x - drawing.startPoint.x, // 가로
-      height: pos.y - drawing.startPoint.y, // 세로
+    set({
+      currentShape: {
+        ...state.currentShape!,
+        radius,
+      },
     });
-  };
+  },
 
-  const handlePolygonMove = (pos: Point) => {
-    if (!drawing.isDrawing || !drawing.polygonPoints.length) return;
+  // 사각형 이동 처리
+  handleRectangleMove: (pos: Vector2d) => {
+    const state = get();
+    if (!state.startPoint) return;
+
+    set({
+      currentShape: {
+        ...state.currentShape!,
+        width: pos.x - state.startPoint.x, // 가로
+        height: pos.y - state.startPoint.y, // 세로
+      },
+    });
+  },
+
+  // 다각형 이동 처리
+  handlePolygonMove: (pos: Vector2d) => {
+    const state = get();
+    if (!state.isDrawing || !state.polygonPoints.length) return;
 
     const points = [
-      ...drawing.polygonPoints.flatMap((p) => [p.x, p.y]), // 다각형 점들
+      ...state.polygonPoints.flatMap((p) => [p.x, p.y]), // 다각형 점들
       pos.x, // 끝점
       pos.y,
     ];
 
-    updateCurrentShape({ points });
-  };
-
-  // 현재 그리고 있는 도형 업데이트
-  const updateCurrentShape = (updates: Partial<ShapeType>) => {
-    setDrawing((prev) => ({
-      ...prev,
-      currentShape: prev.currentShape
-        ? ({ ...prev.currentShape, ...updates } as ShapeType)
-        : null,
-    }));
-  };
+    set({
+      currentShape: {
+        ...state.currentShape!,
+        points,
+      },
+    });
+  },
 
   // 베지어 곡선 계산 함수
-  const calculateBezierPoints = (
-    start: Point,
-    control: Point,
-    end: Point
+  calculateBezierPoints: (
+    start: Vector2d,
+    control: Vector2d,
+    end: Vector2d
   ): number[] =>
     Array.from({ length: CONSTANTS.SEGMENTS + 1 })
       // t값 생성 (0 ~ 1)
@@ -289,20 +378,5 @@ export const useDrawing = () => {
         ];
       })
       // [x, y] 배열을 평탄화
-      .flat();
-
-  return {
-    drawing,
-    resetDrawing,
-    handleLineDrawing,
-    handleCurveDrawing,
-    handleShapeDrawing,
-    handlePolygonDrawing,
-    handleLineMove,
-    handleCurveMove,
-    handleCircleMove,
-    handleRectangleMove,
-    handlePolygonMove,
-    calculateBezierPoints,
-  };
-};
+      .flat(),
+}));

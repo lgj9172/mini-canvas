@@ -1,3 +1,4 @@
+import { memo } from "react";
 import {
   Tooltip,
   TooltipContent,
@@ -6,12 +7,9 @@ import {
 } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
 import { useToolbar } from "@/hooks/useToolbar";
+import { useDrawingStore } from "@/hooks/useDrawing";
 
-interface ColorPickerProps {
-  disabled?: boolean;
-}
-
-export function ColorPicker({ disabled }: ColorPickerProps) {
+export const ColorPicker = memo(function ColorPicker() {
   const predefinedColors = [
     "#000000", // 검정
     "#6B7280", // gray-500
@@ -28,6 +26,7 @@ export function ColorPicker({ disabled }: ColorPickerProps) {
   ];
 
   const { color, setColor } = useToolbar();
+  const { isDrawing: disabled } = useDrawingStore();
 
   return (
     <div className="flex items-center gap-2">
@@ -90,4 +89,4 @@ export function ColorPicker({ disabled }: ColorPickerProps) {
       </TooltipProvider>
     </div>
   );
-}
+});

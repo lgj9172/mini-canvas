@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Undo2, Redo2, RotateCcw } from "lucide-react";
@@ -9,14 +10,13 @@ import {
 } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
 import { useHistory } from "@/hooks/useHistory";
+import { useDrawingStore } from "@/hooks/useDrawing";
 
-interface ActionButtonsProps {
-  disabled?: boolean;
-}
-
-export function ActionButtons({ disabled }: ActionButtonsProps) {
+export const ActionButtons = memo(function ActionButtons() {
   const { history, undoHistory, redoHistory, resetHistory, currentStep } =
     useHistory();
+
+  const { isDrawing: disabled } = useDrawingStore();
 
   const progress =
     history.length === 0 ? 0 : (currentStep / (history.length - 1)) * 100;
@@ -97,4 +97,4 @@ export function ActionButtons({ disabled }: ActionButtonsProps) {
       </div>
     </TooltipProvider>
   );
-}
+});

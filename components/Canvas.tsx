@@ -1,18 +1,26 @@
-import { useDrawing } from "@/hooks/useDrawing";
-import { useHistory } from "@/hooks/useHistory";
 import { useToolbar } from "@/hooks/useToolbar";
+import { useHistory } from "@/hooks/useHistory";
 import { useWindowSize } from "@/hooks/useWindowSize";
-import { LineType, Point, ShapeType } from "@/types";
 import { KonvaEventObject } from "konva/lib/Node";
+import { LineConfig } from "konva/lib/shapes/Line";
+import { CircleConfig } from "konva/lib/shapes/Circle";
+import { RectConfig } from "konva/lib/shapes/Rect";
+import { ShapeConfig } from "konva/lib/Shape";
 import { Circle, Layer, Line, Rect, Stage } from "react-konva";
 import { Toolbar } from "./Toolbar";
+import { Vector2d } from "konva/lib/types";
+import { useDrawingStore } from "@/hooks/useDrawing";
 
 export default function Canvas() {
   const windowSize = useWindowSize();
   const { tool, color, width } = useToolbar();
-  const { history, currentStep } = useHistory();
+  const { history, currentStep, appendHistory } = useHistory();
   const {
-    drawing,
+    isDrawing,
+    currentLine,
+    currentShape,
+    controlPoint,
+    polygonPoints,
     handleLineDrawing,
     handleCurveDrawing,
     handleShapeDrawing,
@@ -22,34 +30,64 @@ export default function Canvas() {
     handleCircleMove,
     handleRectangleMove,
     handlePolygonMove,
-  } = useDrawing();
+  } = useDrawingStore();
 
   const handleMouseDown = (e: KonvaEventObject<MouseEvent>) => {
     const pos = e.target.getStage()?.getPointerPosition();
     if (!pos) return;
 
-    const isFirstClick = !drawing.isDrawing;
+    const isFirstClick = !isDrawing;
 
     switch (tool) {
       case "line":
-        handleLineDrawing(pos, isFirstClick);
+        handleLineDrawing(
+          pos,
+          isFirstClick,
+          color,
+          width,
+          history,
+          currentStep,
+          appendHistory
+        );
         break;
       case "curve":
-        handleCurveDrawing(pos);
+        handleCurveDrawing(
+          pos,
+          color,
+          width,
+          history,
+          currentStep,
+          appendHistory
+        );
         break;
       case "circle":
       case "rectangle":
-        handleShapeDrawing(pos, isFirstClick);
+        handleShapeDrawing(
+          pos,
+          isFirstClick,
+          color,
+          width,
+          history,
+          currentStep,
+          appendHistory
+        );
         break;
       case "polygon":
-        handlePolygonDrawing(pos);
+        handlePolygonDrawing(
+          pos,
+          color,
+          width,
+          history,
+          currentStep,
+          appendHistory
+        );
         break;
     }
   };
 
   const handleMouseMove = (e: KonvaEventObject<MouseEvent>) => {
     const pos = e.target.getStage()?.getPointerPosition();
-    if (!pos || (!drawing.isDrawing && tool !== "polygon")) return;
+    if (!pos || (!isDrawing && tool !== "polygon")) return;
 
     const moveHandlers = {
       line: handleLineMove,
@@ -62,63 +100,39 @@ export default function Canvas() {
     moveHandlers[tool as keyof typeof moveHandlers]?.(pos);
   };
 
-  // 선 렌더링
-  const LineRenderer = ({ line, index }: { line: LineType; index: number }) => {
-    return (
-      <Line
-        key={`line-${index}`}
-        points={line.points}
-        stroke={line.color}
-        strokeWidth={line.strokeWidth}
-        lineCap="round"
-        lineJoin="round"
-      />
-    );
-  };
-
-  // 도형 렌더링
-  const ShapeRenderer = ({ shape }: { shape: ShapeType }) => {
-    switch (shape.tool) {
-      case "polygon":
-        return (
-          <Line
-            points={shape.points}
-            stroke={shape.stroke}
-            strokeWidth={shape.strokeWidth}
-            closed={true}
-          />
-        );
-
-      case "circle":
-        return (
-          <Circle
-            x={shape.x}
-            y={shape.y}
-            radius={shape.radius || 0}
-            stroke={shape.stroke}
-            strokeWidth={shape.strokeWidth}
-          />
-        );
-
-      case "rectangle":
-        return (
-          <Rect
-            x={shape.x}
-            y={shape.y}
-            width={shape.width || 0}
-            height={shape.height || 0}
-            stroke={shape.stroke}
-            strokeWidth={shape.strokeWidth}
-          />
-        );
-
-      default:
-        return null;
+  // 통합된 요소 렌더링을 위한 컴포넌트
+  const ElementRenderer = ({
+    element,
+  }: {
+    element: LineConfig | CircleConfig | RectConfig;
+  }) => {
+    // Line (직선과 곡선)인 경우
+    if ("points" in element) {
+      return (
+        <Line
+          points={element.points}
+          stroke={element.stroke}
+          strokeWidth={element.strokeWidth}
+          closed={"closed" in element ? element.closed : false}
+        />
+      );
     }
+
+    // Circle인 경우
+    if ("radius" in element) {
+      return <Circle {...element} />;
+    }
+
+    // Rectangle인 경우
+    if ("width" in element && "height" in element) {
+      return <Rect {...element} />;
+    }
+
+    return null;
   };
 
   // 제어점 표시를 위한 Circle 컴포넌트
-  const ControlPoint = ({ x, y }: Point) => (
+  const ControlPoint = ({ x, y }: Vector2d) => (
     <Circle
       x={x}
       y={y}
@@ -131,14 +145,12 @@ export default function Canvas() {
 
   // 현재 그리고 있는 선 렌더링
   const renderCurrentLine = () => {
-    if (!drawing.currentLine) return null;
+    if (!currentLine) return null;
 
     // 공통으로 사용되는 선 속성
     const commonProps = {
       stroke: color,
       strokeWidth: width,
-      lineCap: "round" as const,
-      lineJoin: "round" as const,
       opacity: 0.5,
     };
 
@@ -148,18 +160,18 @@ export default function Canvas() {
         return (
           <>
             {/* 현재 그리고 있는 곡선 */}
-            <Line points={drawing.currentLine} {...commonProps} />
+            <Line points={currentLine} {...commonProps} />
             {/* 제어점과 보조선 */}
-            {drawing.controlPoint && (
+            {controlPoint && (
               <>
-                <ControlPoint {...drawing.controlPoint} />
+                <ControlPoint {...controlPoint} />
                 {/* 제어점까지의 보조선 */}
                 <Line
                   points={[
-                    drawing.currentLine[0],
-                    drawing.currentLine[1],
-                    drawing.controlPoint.x,
-                    drawing.controlPoint.y,
+                    currentLine[0],
+                    currentLine[1],
+                    controlPoint.x,
+                    controlPoint.y,
                   ]}
                   stroke="#EF4444"
                   strokeWidth={1}
@@ -176,10 +188,10 @@ export default function Canvas() {
         return (
           <Line
             points={[
-              drawing.currentLine[0], // 시작점 x
-              drawing.currentLine[1], // 시작점 y
-              drawing.currentLine[2], // 끝점 x
-              drawing.currentLine[3], // 끝점 y
+              currentLine[0], // 시작점 x
+              currentLine[1], // 시작점 y
+              currentLine[2], // 끝점 x
+              currentLine[3], // 끝점 y
             ]}
             {...commonProps}
           />
@@ -192,61 +204,46 @@ export default function Canvas() {
 
   // 현재 그리고 있는 도형 렌더링
   const renderCurrentShape = () => {
-    if (!drawing.currentShape) return null;
+    if (!currentShape) return null;
 
     // 공통으로 사용되는 속성들
     const commonProps = {
-      stroke: drawing.currentShape.stroke,
-      strokeWidth: drawing.currentShape.strokeWidth,
+      stroke: currentShape.stroke,
+      strokeWidth: currentShape.strokeWidth,
       opacity: 0.5,
     };
 
-    switch (drawing.currentShape.tool) {
-      case "polygon":
-        return (
-          <>
-            <Line points={drawing.currentShape.points} {...commonProps} />
-            {drawing.polygonPoints.length > 0 && (
-              <ControlPoint {...drawing.polygonPoints[0]} />
-            )}
-          </>
-        );
-
-      case "circle":
-        return (
-          <>
-            <Circle
-              x={drawing.currentShape.x || 0}
-              y={drawing.currentShape.y || 0}
-              radius={drawing.currentShape.radius || 0}
-              {...commonProps}
-            />
-            <ControlPoint
-              x={drawing.currentShape.x || 0}
-              y={drawing.currentShape.y || 0}
-            />
-          </>
-        );
-
-      case "rectangle":
-        return (
-          <Rect
-            x={drawing.currentShape.x || 0}
-            y={drawing.currentShape.y || 0}
-            width={drawing.currentShape.width || 0}
-            height={drawing.currentShape.height || 0}
-            {...commonProps}
-          />
-        );
-
-      default:
-        return null;
+    // Polygon (points가 있는 경우)
+    if ("points" in currentShape) {
+      return (
+        <>
+          <Line points={currentShape.points} {...commonProps} />
+          {polygonPoints.length > 0 && <ControlPoint {...polygonPoints[0]} />}
+        </>
+      );
     }
+
+    // Circle (radius가 있는 경우)
+    if ("radius" in currentShape) {
+      return (
+        <>
+          <Circle {...currentShape} {...commonProps} />
+          <ControlPoint x={currentShape.x || 0} y={currentShape.y || 0} />
+        </>
+      );
+    }
+
+    // Rectangle (width와 height가 있는 경우)
+    if ("width" in currentShape && "height" in currentShape) {
+      return <Rect {...currentShape} {...commonProps} />;
+    }
+
+    return null;
   };
 
   return (
     <div className="h-screen flex flex-col">
-      <Toolbar disabled={drawing.isDrawing} />
+      <Toolbar />
       <Stage
         width={windowSize.width}
         height={windowSize.height}
@@ -255,11 +252,8 @@ export default function Canvas() {
         onMouseMove={handleMouseMove}
       >
         <Layer>
-          {history[currentStep].lines.map((line, i) => (
-            <LineRenderer key={`line-${i}`} line={line} index={i} />
-          ))}
-          {history[currentStep].shapes.map((shape) => (
-            <ShapeRenderer key={shape.id} shape={shape} />
+          {history[currentStep].map((element, i) => (
+            <ElementRenderer key={`element-${i}`} element={element} />
           ))}
           {renderCurrentLine()}
           {renderCurrentShape()}
